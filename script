@@ -1,0 +1,702 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TextChatService = game:GetService("TextChatService")
+
+local player = Players.LocalPlayer
+
+local mensagens = {
+	{
+		tecla = Enum.KeyCode.F,
+		nomeTecla = "F",
+		texto = "/Mat",
+		intervalo = 0.1,
+		emoji = "🔫"
+	},
+}
+
+local modo = "PC"
+local enviando = {}
+local contador = 0
+local editandoIndice = nil
+
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "ChatPanel"
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = player:WaitForChild("PlayerGui")
+
+
+local function arredondar(obj, raio)
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, raio)
+	corner.Parent = obj
+	return corner
+end
+
+local function arrastavel(obj, area)
+	local arrastando = false
+	local inicio
+	local posicao
+
+	area.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			arrastando = true
+			inicio = input.Position
+			posicao = obj.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					arrastando = false
+				end
+			end)
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if not arrastando then
+			return
+		end
+
+		if input.UserInputType == Enum.UserInputType.MouseMovement
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			local delta = input.Position - inicio
+
+			obj.Position = UDim2.new(
+				posicao.X.Scale,
+				posicao.X.Offset + delta.X,
+				posicao.Y.Scale,
+				posicao.Y.Offset + delta.Y
+			)
+		end
+	end)
+end
+
+local function keyCodeDaLetra(letra)
+	letra = string.upper(letra)
+
+	if #letra ~= 1 then
+		return nil
+	end
+
+	return Enum.KeyCode[letra]
+end
+
+
+local botaoPrincipal = Instance.new("TextButton")
+botaoPrincipal.Name = "BotaoChat"
+botaoPrincipal.Size = UDim2.new(0, 60, 0, 60)
+botaoPrincipal.Position = UDim2.new(0, 20, 0.5, -30)
+botaoPrincipal.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+botaoPrincipal.Text = "👑"
+botaoPrincipal.TextSize = 30
+botaoPrincipal.TextColor3 = Color3.new(1, 1, 1)
+botaoPrincipal.Parent = gui
+
+arredondar(botaoPrincipal, 100)
+arrastavel(botaoPrincipal, botaoPrincipal)
+
+
+local painel = Instance.new("Frame")
+painel.Size = UDim2.new(0, 450, 0, 350)
+painel.Position = UDim2.new(0.5, -225, 0.5, -175)
+painel.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+painel.Visible = false
+painel.Parent = gui
+
+arredondar(painel, 14)
+
+local barra = Instance.new("TextButton")
+barra.Size = UDim2.new(1, 0, 0, 45)
+barra.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+barra.Text = "👑 Spam Brookhaven Micheal 1.0v"
+barra.TextColor3 = Color3.new(1, 1, 1)
+barra.TextSize = 20
+barra.TextXAlignment = Enum.TextXAlignment.Left
+barra.Parent = painel
+
+local padding = Instance.new("UIPadding")
+padding.PaddingLeft = UDim.new(0, 15)
+padding.Parent = barra
+
+arredondar(barra, 14)
+arrastavel(painel, barra)
+
+local abas = Instance.new("Frame")
+abas.Size = UDim2.new(1, -20, 0, 40)
+abas.Position = UDim2.new(0, 10, 0, 55)
+abas.BackgroundTransparency = 1
+abas.Parent = painel
+
+local function criarAba(nome, x)
+	local aba = Instance.new("TextButton")
+	aba.Size = UDim2.new(0, 130, 1, 0)
+	aba.Position = UDim2.new(0, x, 0, 0)
+	aba.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+	aba.Text = nome
+	aba.TextColor3 = Color3.new(1, 1, 1)
+	aba.TextSize = 16
+	aba.Parent = abas
+
+	arredondar(aba, 8)
+
+	return aba
+end
+
+local abaChat = criarAba("💬 Chat", 0)
+local abaConfig = criarAba("⚙️ Config", 140)
+local abaExtras = criarAba("✨ Extras", 280)
+
+local conteudo = Instance.new("Frame")
+conteudo.Size = UDim2.new(1, -20, 1, -110)
+conteudo.Position = UDim2.new(0, 10, 0, 105)
+conteudo.BackgroundTransparency = 1
+conteudo.Parent = painel
+
+local paginas = {}
+
+local function criarPagina()
+	local pagina = Instance.new("Frame")
+	pagina.Size = UDim2.new(1, 0, 1, 0)
+	pagina.BackgroundTransparency = 1
+	pagina.Visible = false
+	pagina.Parent = conteudo
+
+	table.insert(paginas, pagina)
+
+	return pagina
+end
+
+local paginaChat = criarPagina()
+local paginaConfig = criarPagina()
+local paginaExtras = criarPagina()
+
+local function abrirPagina(pagina)
+	for _, p in ipairs(paginas) do
+		p.Visible = false
+	end
+
+	pagina.Visible = true
+end
+
+abaChat.MouseButton1Click:Connect(function()
+	abrirPagina(paginaChat)
+end)
+
+abaConfig.MouseButton1Click:Connect(function()
+	abrirPagina(paginaConfig)
+end)
+
+abaExtras.MouseButton1Click:Connect(function()
+	abrirPagina(paginaExtras)
+end)
+
+abrirPagina(paginaChat)
+
+local botaoAdicionar = Instance.new("TextButton")
+botaoAdicionar.Size = UDim2.new(1, 0, 0, 42)
+botaoAdicionar.Position = UDim2.new(0, 0, 0, 0)
+botaoAdicionar.BackgroundColor3 = Color3.fromRGB(65, 130, 75)
+botaoAdicionar.Text = "➕ Adicionar mensagem"
+botaoAdicionar.TextColor3 = Color3.new(1, 1, 1)
+botaoAdicionar.TextSize = 17
+botaoAdicionar.Parent = paginaChat
+
+arredondar(botaoAdicionar, 8)
+
+local lista = Instance.new("ScrollingFrame")
+lista.Size = UDim2.new(1, 0, 1, -50)
+lista.Position = UDim2.new(0, 0, 0, 50)
+lista.BackgroundTransparency = 1
+lista.BorderSizePixel = 0
+lista.ScrollBarThickness = 5
+lista.AutomaticCanvasSize = Enum.AutomaticSize.Y
+lista.CanvasSize = UDim2.new(0, 0, 0, 0)
+lista.Parent = paginaChat
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 7)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = lista
+
+local editor = Instance.new("Frame")
+editor.Size = UDim2.new(0, 370, 0, 335)
+editor.Position = UDim2.new(0.5, -185, 0.5, -167)
+editor.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+editor.Visible = false
+editor.ZIndex = 10
+editor.Parent = gui
+
+arredondar(editor, 12)
+
+local tituloEditor = Instance.new("TextLabel")
+tituloEditor.Size = UDim2.new(1, 0, 0, 40)
+tituloEditor.BackgroundTransparency = 1
+tituloEditor.Text = "➕ Nova mensagem"
+tituloEditor.TextColor3 = Color3.new(1, 1, 1)
+tituloEditor.TextSize = 20
+tituloEditor.ZIndex = 11
+tituloEditor.Parent = editor
+
+local function criarCampo(texto, y)
+	local campo = Instance.new("TextBox")
+	campo.Size = UDim2.new(1, -30, 0, 42)
+	campo.Position = UDim2.new(0, 15, 0, y)
+	campo.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	campo.TextColor3 = Color3.new(1, 1, 1)
+	campo.PlaceholderText = texto
+	campo.Text = ""
+	campo.TextSize = 16
+	campo.ClearTextOnFocus = false
+	campo.ZIndex = 11
+	campo.Parent = editor
+
+	arredondar(campo, 8)
+
+	return campo
+end
+
+local campoTecla = criarCampo("Tecla (ex: F)", 50)
+local campoMensagem = criarCampo("Mensagem", 100)
+local campoIntervalo = criarCampo("Intervalo em segundos", 150)
+local campoEmoji = criarCampo("Emoji do botão (ex: 🔥)", 200)
+
+local salvarMensagem = Instance.new("TextButton")
+salvarMensagem.Size = UDim2.new(0.5, -20, 0, 40)
+salvarMensagem.Position = UDim2.new(0, 15, 1, -50)
+salvarMensagem.BackgroundColor3 = Color3.fromRGB(70, 140, 80)
+salvarMensagem.Text = "💾 Salvar"
+salvarMensagem.TextColor3 = Color3.new(1, 1, 1)
+salvarMensagem.TextSize = 16
+salvarMensagem.ZIndex = 11
+salvarMensagem.Parent = editor
+
+arredondar(salvarMensagem, 8)
+
+local cancelar = Instance.new("TextButton")
+cancelar.Size = UDim2.new(0.5, -20, 0, 40)
+cancelar.Position = UDim2.new(0.5, 5, 1, -50)
+cancelar.BackgroundColor3 = Color3.fromRGB(130, 60, 60)
+cancelar.Text = "✖ Cancelar"
+cancelar.TextColor3 = Color3.new(1, 1, 1)
+cancelar.TextSize = 16
+cancelar.ZIndex = 11
+cancelar.Parent = editor
+
+arredondar(cancelar, 8)
+
+local mobileFrame = Instance.new("Frame")
+mobileFrame.Name = "BotoesMobile"
+mobileFrame.Size = UDim2.new(1, 0, 1, 0)
+mobileFrame.BackgroundTransparency = 1
+mobileFrame.Visible = false
+mobileFrame.Parent = gui
+
+local botoesMobile = {}
+
+local function criarBotoesMobile()
+
+	for _, objeto in pairs(botoesMobile) do
+		if objeto then
+			objeto:Destroy()
+		end
+	end
+
+	botoesMobile = {}
+
+	for indice, config in ipairs(mensagens) do
+
+		local botao = Instance.new("TextButton")
+		botao.Name = "Mensagem_" .. indice
+		botao.Size = UDim2.new(0, 60, 0, 60)
+
+		local coluna = (indice - 1) % 4
+		local linha = math.floor((indice - 1) / 4)
+
+		botao.Position = UDim2.new(
+			0,
+			20 + coluna * 70,
+			1,
+			-90 - linha * 70
+		)
+
+		botao.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+		botao.Text = config.emoji ~= "" and config.emoji or "💬"
+		botao.TextSize = 28
+		botao.TextColor3 = Color3.new(1, 1, 1)
+		botao.Parent = mobileFrame
+
+		arredondar(botao, 100)
+
+		botoesMobile[config] = botao
+		arrastavel(botao, botao)
+		botao.MouseButton1Down:Connect(function()
+
+			if enviando[config] then
+				return
+			end
+
+			enviando[config] = true
+
+			task.spawn(function()
+
+				while enviando[config] do
+
+					local canal = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+
+					if canal then
+						pcall(function()
+							canal:SendAsync(config.texto)
+						end)
+
+						contador += 1
+					end
+
+					task.wait(config.intervalo)
+				end
+
+			end)
+		end)
+
+		botao.MouseButton1Up:Connect(function()
+			enviando[config] = false
+		end)
+		botao.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch then
+				enviando[config] = false
+			end
+		end)
+	end
+end
+
+
+local function atualizarLista()
+	for _, objeto in ipairs(lista:GetChildren()) do
+		if objeto:IsA("Frame") then
+			objeto:Destroy()
+		end
+	end
+	for indice, config in ipairs(mensagens) do
+		local item = Instance.new("Frame")
+		item.Size = UDim2.new(1, -5, 0, 58)
+		item.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		item.LayoutOrder = indice
+		item.Parent = lista
+
+		arredondar(item, 8)
+
+		local tecla = Instance.new("TextLabel")
+		tecla.Size = UDim2.new(0, 55, 1, 0)
+		tecla.Position = UDim2.new(0, 5, 0, 0)
+		tecla.BackgroundTransparency = 1
+		tecla.Text = "[" .. config.nomeTecla .. "]"
+		tecla.TextColor3 = Color3.fromRGB(100, 190, 255)
+		tecla.TextSize = 16
+		tecla.Font = Enum.Font.GothamBold
+		tecla.Parent = item
+
+		local texto = Instance.new("TextLabel")
+		texto.Size = UDim2.new(1, -240, 1, 0)
+		texto.Position = UDim2.new(0, 60, 0, 0)
+		texto.BackgroundTransparency = 1
+		texto.Text = config.texto
+		texto.TextColor3 = Color3.new(1, 1, 1)
+		texto.TextSize = 15
+		texto.TextXAlignment = Enum.TextXAlignment.Left
+		texto.TextTruncate = Enum.TextTruncate.AtEnd
+		texto.Parent = item
+
+		local emoji = Instance.new("TextLabel")
+		emoji.Size = UDim2.new(0, 35, 1, 0)
+		emoji.Position = UDim2.new(1, -180, 0, 0)
+		emoji.BackgroundTransparency = 1
+		emoji.Text = config.emoji or "💬"
+		emoji.TextSize = 20
+		emoji.Parent = item
+
+		local tempo = Instance.new("TextLabel")
+		tempo.Size = UDim2.new(0, 60, 1, 0)
+		tempo.Position = UDim2.new(1, -145, 0, 0)
+		tempo.BackgroundTransparency = 1
+		tempo.Text = "⏱ " .. config.intervalo .. "s"
+		tempo.TextColor3 = Color3.fromRGB(180, 180, 180)
+		tempo.TextSize = 12
+		tempo.Parent = item
+
+		local editar = Instance.new("TextButton")
+		editar.Size = UDim2.new(0, 32, 0, 32)
+		editar.Position = UDim2.new(1, -78, 0.5, -16)
+		editar.BackgroundColor3 = Color3.fromRGB(70, 90, 130)
+		editar.Text = "✏️"
+		editar.TextSize = 15
+		editar.Parent = item
+
+		arredondar(editar, 7)
+		local apagar = Instance.new("TextButton")
+		apagar.Size = UDim2.new(0, 32, 0, 32)
+		apagar.Position = UDim2.new(1, -40, 0.5, -16)
+		apagar.BackgroundColor3 = Color3.fromRGB(130, 55, 55)
+		apagar.Text = "🗑️"
+		apagar.TextSize = 15
+		apagar.Parent = item
+
+		arredondar(apagar, 7)
+		editar.MouseButton1Click:Connect(function()
+			editandoIndice = indice
+			campoTecla.Text = config.nomeTecla
+			campoMensagem.Text = config.texto
+			campoIntervalo.Text = tostring(config.intervalo)
+			campoEmoji.Text = config.emoji or "💬"
+			tituloEditor.Text = "✏️ Editar mensagem"
+			editor.Visible = true
+		end)
+
+		apagar.MouseButton1Click:Connect(function()
+			enviando[config] = false
+			table.remove(mensagens, indice)
+			atualizarLista()
+			criarBotoesMobile()
+		end)
+	end
+end
+
+botaoAdicionar.MouseButton1Click:Connect(function()
+	editandoIndice = nil
+	tituloEditor.Text = "➕ Nova mensagem"
+	campoTecla.Text = ""
+	campoMensagem.Text = ""
+	campoIntervalo.Text = "1"
+	campoEmoji.Text = "💬"
+	editor.Visible = true
+end)
+
+cancelar.MouseButton1Click:Connect(function()
+	editor.Visible = false
+end)
+
+salvarMensagem.MouseButton1Click:Connect(function()
+
+	local key = keyCodeDaLetra(campoTecla.Text)
+
+	if not key then
+		campoTecla.Text = ""
+		campoTecla.PlaceholderText = "Tecla inválida!"
+		return
+	end
+
+	if campoMensagem.Text == "" then
+		return
+	end
+
+	local tempo = tonumber(campoIntervalo.Text)
+
+	if not tempo or tempo < 0.1 then
+		tempo = 0.1
+	end
+
+	local dados = {
+		tecla = key,
+		nomeTecla = string.upper(campoTecla.Text),
+		texto = campoMensagem.Text,
+		intervalo = tempo,
+		emoji = campoEmoji.Text ~= "" and campoEmoji.Text or "💬"
+	}
+
+	if editandoIndice then
+
+		enviando[mensagens[editandoIndice]] = false
+		mensagens[editandoIndice] = dados
+
+	else
+
+		table.insert(mensagens, dados)
+
+	end
+
+	editor.Visible = false
+
+	atualizarLista()
+	criarBotoesMobile()
+end)
+
+--==================================================
+-- CONFIG
+--==================================================
+
+local tituloConfig = Instance.new("TextLabel")
+tituloConfig.Size = UDim2.new(1, 0, 0, 35)
+tituloConfig.BackgroundTransparency = 1
+tituloConfig.Text = "⚙️ Configurações"
+tituloConfig.TextColor3 = Color3.new(1, 1, 1)
+tituloConfig.TextSize = 20
+tituloConfig.Parent = paginaConfig
+
+-- DISPOSITIVO
+local dispositivoLabel = Instance.new("TextLabel")
+dispositivoLabel.Size = UDim2.new(1, 0, 0, 30)
+dispositivoLabel.Position = UDim2.new(0, 0, 0, 40)
+dispositivoLabel.BackgroundTransparency = 1
+dispositivoLabel.Text = "Dispositivo"
+dispositivoLabel.TextColor3 = Color3.new(1, 1, 1)
+dispositivoLabel.TextSize = 17
+dispositivoLabel.TextXAlignment = Enum.TextXAlignment.Left
+dispositivoLabel.Parent = paginaConfig
+
+-- SWITCH
+local switch = Instance.new("TextButton")
+switch.Size = UDim2.new(0, 180, 0, 42)
+switch.Position = UDim2.new(0, 0, 0, 75)
+switch.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
+switch.Text = "🖥️ PC"
+switch.TextColor3 = Color3.new(1, 1, 1)
+switch.TextSize = 17
+switch.Parent = paginaConfig
+
+arredondar(switch, 8)
+
+local salvarConfig = Instance.new("TextButton")
+salvarConfig.Size = UDim2.new(1, 0, 0, 42)
+salvarConfig.Position = UDim2.new(0, 0, 0, 130)
+salvarConfig.BackgroundColor3 = Color3.fromRGB(70, 130, 80)
+salvarConfig.Text = "💾 Salvar configuração"
+salvarConfig.TextColor3 = Color3.new(1, 1, 1)
+salvarConfig.TextSize = 17
+salvarConfig.Parent = paginaConfig
+
+arredondar(salvarConfig, 8)
+
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1, 0, 0, 35)
+status.Position = UDim2.new(0, 0, 0, 180)
+status.BackgroundTransparency = 1
+status.Text = "Modo atual: 🖥️ PC"
+status.TextColor3 = Color3.fromRGB(180, 180, 180)
+status.TextSize = 14
+status.Parent = paginaConfig
+
+switch.MouseButton1Click:Connect(function()
+
+	if modo == "PC" then
+		modo = "Mobile"
+
+		switch.Text = "📱 Mobile"
+		status.Text = "Modo atual: 📱 Mobile"
+
+		mobileFrame.Visible = true
+
+	else
+		modo = "PC"
+
+		switch.Text = "🖥️ PC"
+		status.Text = "Modo atual: 🖥️ PC"
+
+		mobileFrame.Visible = false
+	end
+end)
+
+salvarConfig.MouseButton1Click:Connect(function()
+
+	status.Text = "✅ Configuração salva!"
+
+	task.delay(2, function()
+		if status then
+			status.Text = "Modo atual: " ..
+				(modo == "PC" and "🖥️ PC" or "📱 Mobile")
+		end
+	end)
+end)
+
+--==================================================
+-- EXTRAS
+--==================================================
+
+local tituloExtras = Instance.new("TextLabel")
+tituloExtras.Size = UDim2.new(1, 0, 0, 35)
+tituloExtras.BackgroundTransparency = 1
+tituloExtras.Text = "✨ Extras"
+tituloExtras.TextColor3 = Color3.new(1, 1, 1)
+tituloExtras.TextSize = 20
+tituloExtras.Parent = paginaExtras
+
+local contadorLabel = Instance.new("TextLabel")
+contadorLabel.Size = UDim2.new(1, 0, 0, 45)
+contadorLabel.Position = UDim2.new(0, 0, 0, 45)
+contadorLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+contadorLabel.Text = "📨 Mensagens enviadas: 0"
+contadorLabel.TextColor3 = Color3.new(1, 1, 1)
+contadorLabel.TextSize = 17
+contadorLabel.Parent = paginaExtras
+
+arredondar(contadorLabel, 8)
+
+local esconder = Instance.new("TextButton")
+esconder.Size = UDim2.new(1, 0, 0, 42)
+esconder.Position = UDim2.new(0, 0, 0, 100)
+esconder.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
+esconder.Text = "👁️ Esconder painel"
+esconder.TextColor3 = Color3.new(1, 1, 1)
+esconder.TextSize = 16
+esconder.Parent = paginaExtras
+
+arredondar(esconder, 8)
+
+esconder.MouseButton1Click:Connect(function()
+	painel.Visible = false
+end)
+
+botaoPrincipal.MouseButton1Click:Connect(function()
+	painel.Visible = not painel.Visible
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed or modo ~= "PC" then
+		return
+	end
+	for _, config in ipairs(mensagens) do
+
+		if input.KeyCode == config.tecla and not enviando[config] then
+
+			enviando[config] = true
+
+			task.spawn(function()
+
+				while enviando[config] and modo == "PC" do
+
+					local canal = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+
+					if canal then
+
+						pcall(function()
+							canal:SendAsync(config.texto)
+						end)
+
+						contador += 1
+						contadorLabel.Text =
+							"📨 Mensagens enviadas: " .. contador
+					end
+
+					task.wait(config.intervalo)
+				end
+
+			end)
+		end
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+
+	for _, config in ipairs(mensagens) do
+
+		if input.KeyCode == config.tecla then
+			enviando[config] = false
+		end
+
+	end
+
+end)
+
+atualizarLista()
+criarBotoesMobile()
