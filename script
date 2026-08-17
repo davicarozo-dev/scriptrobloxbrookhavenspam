@@ -4,6 +4,10 @@ local TextChatService = game:GetService("TextChatService")
 
 local player = Players.LocalPlayer
 
+--==================================================
+-- DADOS
+--==================================================
+
 local mensagens = {
 	{
 		tecla = Enum.KeyCode.F,
@@ -15,10 +19,17 @@ local mensagens = {
 }
 
 local modo = "PC"
+local modoEditor = false
+
 local enviando = {}
 local contador = 0
 local editandoIndice = nil
 
+local presets = {}
+
+--==================================================
+-- GUI PRINCIPAL
+--==================================================
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "ChatPanel"
@@ -26,6 +37,9 @@ gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = player:WaitForChild("PlayerGui")
 
+--==================================================
+-- FUNÇÕES VISUAIS
+--==================================================
 
 local function arredondar(obj, raio)
 	local corner = Instance.new("UICorner")
@@ -34,12 +48,30 @@ local function arredondar(obj, raio)
 	return corner
 end
 
-local function arrastavel(obj, area)
+local function criarStroke(obj, transparencia)
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(90, 90, 90)
+	stroke.Transparency = transparencia or 0.35
+	stroke.Thickness = 1
+	stroke.Parent = obj
+	return stroke
+end
+
+--==================================================
+-- SISTEMA DE ARRASTAR
+--==================================================
+
+local function arrastavel(obj, area, somenteEditor)
 	local arrastando = false
 	local inicio
 	local posicao
 
 	area.InputBegan:Connect(function(input)
+
+		if somenteEditor and not modoEditor then
+			return
+		end
+
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
 
@@ -56,6 +88,7 @@ local function arrastavel(obj, area)
 	end)
 
 	UserInputService.InputChanged:Connect(function(input)
+
 		if not arrastando then
 			return
 		end
@@ -75,8 +108,13 @@ local function arrastavel(obj, area)
 	end)
 end
 
+--==================================================
+-- TECLAS
+--==================================================
+
 local function keyCodeDaLetra(letra)
-	letra = string.upper(letra)
+
+	letra = string.upper(letra or "")
 
 	if #letra ~= 1 then
 		return nil
@@ -85,60 +123,117 @@ local function keyCodeDaLetra(letra)
 	return Enum.KeyCode[letra]
 end
 
+--==================================================
+-- CANAL
+--==================================================
+
+local function enviarMensagem(texto)
+
+	local canal = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+
+	if not canal then
+		return false
+	end
+
+	local sucesso = pcall(function()
+		canal:SendAsync(texto)
+	end)
+
+	return sucesso
+end
+
+--==================================================
+-- PARAR
+--==================================================
+
+local function pararTodos()
+
+	for config, _ in pairs(enviando) do
+		enviando[config] = false
+	end
+
+	table.clear(enviando)
+end
+
+--==================================================
+-- BOTÃO PRINCIPAL
+--==================================================
 
 local botaoPrincipal = Instance.new("TextButton")
 botaoPrincipal.Name = "BotaoChat"
-botaoPrincipal.Size = UDim2.new(0, 60, 0, 60)
-botaoPrincipal.Position = UDim2.new(0, 20, 0.5, -30)
-botaoPrincipal.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+botaoPrincipal.Size = UDim2.new(0, 62, 0, 62)
+botaoPrincipal.Position = UDim2.new(0, 20, 0.5, -31)
+botaoPrincipal.BackgroundColor3 = Color3.fromRGB(48, 48, 48)
 botaoPrincipal.Text = "👑"
 botaoPrincipal.TextSize = 30
 botaoPrincipal.TextColor3 = Color3.new(1, 1, 1)
 botaoPrincipal.Parent = gui
 
 arredondar(botaoPrincipal, 100)
-arrastavel(botaoPrincipal, botaoPrincipal)
+criarStroke(botaoPrincipal)
 
+-- Só arrasta no editor
+arrastavel(botaoPrincipal, botaoPrincipal, true)
+
+--==================================================
+-- PAINEL
+--==================================================
 
 local painel = Instance.new("Frame")
-painel.Size = UDim2.new(0, 450, 0, 350)
-painel.Position = UDim2.new(0.5, -225, 0.5, -175)
-painel.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+painel.Name = "Painel"
+painel.Size = UDim2.new(0, 500, 0, 390)
+painel.Position = UDim2.new(0.5, -250, 0.5, -195)
+painel.BackgroundColor3 = Color3.fromRGB(29, 29, 31)
 painel.Visible = false
 painel.Parent = gui
 
-arredondar(painel, 14)
+arredondar(painel, 15)
+criarStroke(painel)
+
+--==================================================
+-- BARRA
+--==================================================
 
 local barra = Instance.new("TextButton")
-barra.Size = UDim2.new(1, 0, 0, 45)
-barra.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-barra.Text = "👑 Spam Brookhaven Micheal 1.0v"
+barra.Size = UDim2.new(1, 0, 0, 48)
+barra.BackgroundColor3 = Color3.fromRGB(42, 42, 45)
+barra.Text = "👑  Spam Brookhaven Micheal 2.0v"
 barra.TextColor3 = Color3.new(1, 1, 1)
 barra.TextSize = 20
+barra.Font = Enum.Font.GothamBold
 barra.TextXAlignment = Enum.TextXAlignment.Left
+barra.AutoButtonColor = false
 barra.Parent = painel
 
 local padding = Instance.new("UIPadding")
-padding.PaddingLeft = UDim.new(0, 15)
+padding.PaddingLeft = UDim.new(0, 16)
 padding.Parent = barra
 
-arredondar(barra, 14)
-arrastavel(painel, barra)
+arredondar(barra, 15)
+
+-- Barra pode mover painel normalmente
+arrastavel(painel, barra, false)
+
+--==================================================
+-- ABAS
+--==================================================
 
 local abas = Instance.new("Frame")
-abas.Size = UDim2.new(1, -20, 0, 40)
-abas.Position = UDim2.new(0, 10, 0, 55)
+abas.Size = UDim2.new(1, -20, 0, 42)
+abas.Position = UDim2.new(0, 10, 0, 58)
 abas.BackgroundTransparency = 1
 abas.Parent = painel
 
 local function criarAba(nome, x)
+
 	local aba = Instance.new("TextButton")
-	aba.Size = UDim2.new(0, 130, 1, 0)
+	aba.Size = UDim2.new(0, 150, 1, 0)
 	aba.Position = UDim2.new(0, x, 0, 0)
-	aba.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+	aba.BackgroundColor3 = Color3.fromRGB(52, 52, 55)
 	aba.Text = nome
 	aba.TextColor3 = Color3.new(1, 1, 1)
 	aba.TextSize = 16
+	aba.Font = Enum.Font.GothamSemibold
 	aba.Parent = abas
 
 	arredondar(aba, 8)
@@ -147,18 +242,23 @@ local function criarAba(nome, x)
 end
 
 local abaChat = criarAba("💬 Chat", 0)
-local abaConfig = criarAba("⚙️ Config", 140)
-local abaExtras = criarAba("✨ Extras", 280)
+local abaConfig = criarAba("⚙️ Config", 160)
+local abaExtras = criarAba("✨ Extras", 320)
+
+--==================================================
+-- CONTEÚDO
+--==================================================
 
 local conteudo = Instance.new("Frame")
-conteudo.Size = UDim2.new(1, -20, 1, -110)
-conteudo.Position = UDim2.new(0, 10, 0, 105)
+conteudo.Size = UDim2.new(1, -20, 1, -115)
+conteudo.Position = UDim2.new(0, 10, 0, 110)
 conteudo.BackgroundTransparency = 1
 conteudo.Parent = painel
 
 local paginas = {}
 
 local function criarPagina()
+
 	local pagina = Instance.new("Frame")
 	pagina.Size = UDim2.new(1, 0, 1, 0)
 	pagina.BackgroundTransparency = 1
@@ -175,6 +275,7 @@ local paginaConfig = criarPagina()
 local paginaExtras = criarPagina()
 
 local function abrirPagina(pagina)
+
 	for _, p in ipairs(paginas) do
 		p.Visible = false
 	end
@@ -196,23 +297,53 @@ end)
 
 abrirPagina(paginaChat)
 
+--==================================================
+-- CHAT
+--==================================================
+
+local botoesTopo = Instance.new("Frame")
+botoesTopo.Size = UDim2.new(1, 0, 0, 44)
+botoesTopo.BackgroundTransparency = 1
+botoesTopo.Parent = paginaChat
+
 local botaoAdicionar = Instance.new("TextButton")
-botaoAdicionar.Size = UDim2.new(1, 0, 0, 42)
+botaoAdicionar.Size = UDim2.new(0.5, -4, 1, 0)
 botaoAdicionar.Position = UDim2.new(0, 0, 0, 0)
-botaoAdicionar.BackgroundColor3 = Color3.fromRGB(65, 130, 75)
+botaoAdicionar.BackgroundColor3 = Color3.fromRGB(62, 132, 76)
 botaoAdicionar.Text = "➕ Adicionar mensagem"
 botaoAdicionar.TextColor3 = Color3.new(1, 1, 1)
-botaoAdicionar.TextSize = 17
-botaoAdicionar.Parent = paginaChat
+botaoAdicionar.TextSize = 16
+botaoAdicionar.Font = Enum.Font.GothamBold
+botaoAdicionar.Parent = botoesTopo
 
 arredondar(botaoAdicionar, 8)
 
+local botaoParar = Instance.new("TextButton")
+botaoParar.Size = UDim2.new(0.5, -4, 1, 0)
+botaoParar.Position = UDim2.new(0.5, 4, 0, 0)
+botaoParar.BackgroundColor3 = Color3.fromRGB(145, 60, 60)
+botaoParar.Text = "🛑 Parar todos"
+botaoParar.TextColor3 = Color3.new(1, 1, 1)
+botaoParar.TextSize = 16
+botaoParar.Font = Enum.Font.GothamBold
+botaoParar.Parent = botoesTopo
+
+arredondar(botaoParar, 8)
+
+botaoParar.MouseButton1Click:Connect(function()
+	pararTodos()
+end)
+
+--==================================================
+-- LISTA
+--==================================================
+
 local lista = Instance.new("ScrollingFrame")
-lista.Size = UDim2.new(1, 0, 1, -50)
-lista.Position = UDim2.new(0, 0, 0, 50)
+lista.Size = UDim2.new(1, 0, 1, -52)
+lista.Position = UDim2.new(0, 0, 0, 52)
 lista.BackgroundTransparency = 1
 lista.BorderSizePixel = 0
-lista.ScrollBarThickness = 5
+lista.ScrollBarThickness = 6
 lista.AutomaticCanvasSize = Enum.AutomaticSize.Y
 lista.CanvasSize = UDim2.new(0, 0, 0, 0)
 lista.Parent = paginaChat
@@ -222,36 +353,44 @@ layout.Padding = UDim.new(0, 7)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Parent = lista
 
+--==================================================
+-- EDITOR DE MENSAGEM
+--==================================================
+
 local editor = Instance.new("Frame")
-editor.Size = UDim2.new(0, 370, 0, 335)
-editor.Position = UDim2.new(0.5, -185, 0.5, -167)
-editor.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+editor.Size = UDim2.new(0, 390, 0, 350)
+editor.Position = UDim2.new(0.5, -195, 0.5, -175)
+editor.BackgroundColor3 = Color3.fromRGB(38, 38, 41)
 editor.Visible = false
-editor.ZIndex = 10
+editor.ZIndex = 20
 editor.Parent = gui
 
 arredondar(editor, 12)
+criarStroke(editor)
 
 local tituloEditor = Instance.new("TextLabel")
-tituloEditor.Size = UDim2.new(1, 0, 0, 40)
+tituloEditor.Size = UDim2.new(1, 0, 0, 42)
 tituloEditor.BackgroundTransparency = 1
 tituloEditor.Text = "➕ Nova mensagem"
 tituloEditor.TextColor3 = Color3.new(1, 1, 1)
 tituloEditor.TextSize = 20
-tituloEditor.ZIndex = 11
+tituloEditor.Font = Enum.Font.GothamBold
+tituloEditor.ZIndex = 21
 tituloEditor.Parent = editor
 
 local function criarCampo(texto, y)
+
 	local campo = Instance.new("TextBox")
 	campo.Size = UDim2.new(1, -30, 0, 42)
 	campo.Position = UDim2.new(0, 15, 0, y)
-	campo.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	campo.BackgroundColor3 = Color3.fromRGB(58, 58, 62)
 	campo.TextColor3 = Color3.new(1, 1, 1)
 	campo.PlaceholderText = texto
 	campo.Text = ""
 	campo.TextSize = 16
+	campo.Font = Enum.Font.Gotham
 	campo.ClearTextOnFocus = false
-	campo.ZIndex = 11
+	campo.ZIndex = 21
 	campo.Parent = editor
 
 	arredondar(campo, 8)
@@ -259,34 +398,40 @@ local function criarCampo(texto, y)
 	return campo
 end
 
-local campoTecla = criarCampo("Tecla (ex: F)", 50)
-local campoMensagem = criarCampo("Mensagem", 100)
-local campoIntervalo = criarCampo("Intervalo em segundos", 150)
-local campoEmoji = criarCampo("Emoji do botão (ex: 🔥)", 200)
+local campoTecla = criarCampo("Tecla (ex: F)", 52)
+local campoMensagem = criarCampo("Mensagem", 102)
+local campoIntervalo = criarCampo("Intervalo em segundos", 152)
+local campoEmoji = criarCampo("Emoji (ex: 🔥)", 202)
 
 local salvarMensagem = Instance.new("TextButton")
-salvarMensagem.Size = UDim2.new(0.5, -20, 0, 40)
-salvarMensagem.Position = UDim2.new(0, 15, 1, -50)
-salvarMensagem.BackgroundColor3 = Color3.fromRGB(70, 140, 80)
+salvarMensagem.Size = UDim2.new(0.5, -20, 0, 42)
+salvarMensagem.Position = UDim2.new(0, 15, 1, -52)
+salvarMensagem.BackgroundColor3 = Color3.fromRGB(68, 140, 82)
 salvarMensagem.Text = "💾 Salvar"
 salvarMensagem.TextColor3 = Color3.new(1, 1, 1)
 salvarMensagem.TextSize = 16
-salvarMensagem.ZIndex = 11
+salvarMensagem.Font = Enum.Font.GothamBold
+salvarMensagem.ZIndex = 21
 salvarMensagem.Parent = editor
 
 arredondar(salvarMensagem, 8)
 
 local cancelar = Instance.new("TextButton")
-cancelar.Size = UDim2.new(0.5, -20, 0, 40)
-cancelar.Position = UDim2.new(0.5, 5, 1, -50)
-cancelar.BackgroundColor3 = Color3.fromRGB(130, 60, 60)
+cancelar.Size = UDim2.new(0.5, -20, 0, 42)
+cancelar.Position = UDim2.new(0.5, 5, 1, -52)
+cancelar.BackgroundColor3 = Color3.fromRGB(130, 58, 58)
 cancelar.Text = "✖ Cancelar"
 cancelar.TextColor3 = Color3.new(1, 1, 1)
 cancelar.TextSize = 16
-cancelar.ZIndex = 11
+cancelar.Font = Enum.Font.GothamBold
+cancelar.ZIndex = 21
 cancelar.Parent = editor
 
 arredondar(cancelar, 8)
+
+--==================================================
+-- MOBILE
+--==================================================
 
 local mobileFrame = Instance.new("Frame")
 mobileFrame.Name = "BotoesMobile"
@@ -296,6 +441,10 @@ mobileFrame.Visible = false
 mobileFrame.Parent = gui
 
 local botoesMobile = {}
+
+--==================================================
+-- CRIAR BOTÕES MOBILE
+--==================================================
 
 local function criarBotoesMobile()
 
@@ -311,78 +460,92 @@ local function criarBotoesMobile()
 
 		local botao = Instance.new("TextButton")
 		botao.Name = "Mensagem_" .. indice
-		botao.Size = UDim2.new(0, 60, 0, 60)
+		botao.Size = UDim2.new(0, 62, 0, 62)
 
 		local coluna = (indice - 1) % 4
 		local linha = math.floor((indice - 1) / 4)
 
 		botao.Position = UDim2.new(
 			0,
-			20 + coluna * 70,
+			20 + coluna * 72,
 			1,
-			-90 - linha * 70
+			-90 - linha * 72
 		)
 
-		botao.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+		botao.BackgroundColor3 = Color3.fromRGB(52, 52, 55)
 		botao.Text = config.emoji ~= "" and config.emoji or "💬"
 		botao.TextSize = 28
 		botao.TextColor3 = Color3.new(1, 1, 1)
 		botao.Parent = mobileFrame
 
 		arredondar(botao, 100)
+		criarStroke(botao)
 
 		botoesMobile[config] = botao
-		arrastavel(botao, botao)
-		botao.MouseButton1Down:Connect(function()
 
-			if enviando[config] then
+		-- SÓ permite arrastar no Modo Editor
+		arrastavel(botao, botao, true)
+
+		-- COMEÇAR
+		botao.InputBegan:Connect(function(input)
+
+			if modoEditor then
 				return
 			end
 
-			enviando[config] = true
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
 
-			task.spawn(function()
-
-				while enviando[config] do
-
-					local canal = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-
-					if canal then
-						pcall(function()
-							canal:SendAsync(config.texto)
-						end)
-
-						contador += 1
-					end
-
-					task.wait(config.intervalo)
+				if enviando[config] then
+					return
 				end
 
-			end)
+				enviando[config] = true
+
+				task.spawn(function()
+
+					while enviando[config] and not modoEditor do
+
+						if enviarMensagem(config.texto) then
+							contador += 1
+						end
+
+						task.wait(config.intervalo)
+					end
+
+				end)
+			end
 		end)
 
-		botao.MouseButton1Up:Connect(function()
-			enviando[config] = false
-		end)
+		-- PARAR
 		botao.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.Touch then
+
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+
 				enviando[config] = false
 			end
 		end)
 	end
 end
 
+--==================================================
+-- ATUALIZAR LISTA
+--==================================================
 
 local function atualizarLista()
+
 	for _, objeto in ipairs(lista:GetChildren()) do
 		if objeto:IsA("Frame") then
 			objeto:Destroy()
 		end
 	end
+
 	for indice, config in ipairs(mensagens) do
+
 		local item = Instance.new("Frame")
-		item.Size = UDim2.new(1, -5, 0, 58)
-		item.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		item.Size = UDim2.new(1, -5, 0, 62)
+		item.BackgroundColor3 = Color3.fromRGB(48, 48, 51)
 		item.LayoutOrder = indice
 		item.Parent = lista
 
@@ -399,19 +562,20 @@ local function atualizarLista()
 		tecla.Parent = item
 
 		local texto = Instance.new("TextLabel")
-		texto.Size = UDim2.new(1, -240, 1, 0)
+		texto.Size = UDim2.new(1, -250, 1, 0)
 		texto.Position = UDim2.new(0, 60, 0, 0)
 		texto.BackgroundTransparency = 1
 		texto.Text = config.texto
 		texto.TextColor3 = Color3.new(1, 1, 1)
 		texto.TextSize = 15
+		texto.Font = Enum.Font.Gotham
 		texto.TextXAlignment = Enum.TextXAlignment.Left
 		texto.TextTruncate = Enum.TextTruncate.AtEnd
 		texto.Parent = item
 
 		local emoji = Instance.new("TextLabel")
 		emoji.Size = UDim2.new(0, 35, 1, 0)
-		emoji.Position = UDim2.new(1, -180, 0, 0)
+		emoji.Position = UDim2.new(1, -190, 0, 0)
 		emoji.BackgroundTransparency = 1
 		emoji.Text = config.emoji or "💬"
 		emoji.TextSize = 20
@@ -419,7 +583,7 @@ local function atualizarLista()
 
 		local tempo = Instance.new("TextLabel")
 		tempo.Size = UDim2.new(0, 60, 1, 0)
-		tempo.Position = UDim2.new(1, -145, 0, 0)
+		tempo.Position = UDim2.new(1, -150, 0, 0)
 		tempo.BackgroundTransparency = 1
 		tempo.Text = "⏱ " .. config.intervalo .. "s"
 		tempo.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -428,48 +592,66 @@ local function atualizarLista()
 
 		local editar = Instance.new("TextButton")
 		editar.Size = UDim2.new(0, 32, 0, 32)
-		editar.Position = UDim2.new(1, -78, 0.5, -16)
-		editar.BackgroundColor3 = Color3.fromRGB(70, 90, 130)
+		editar.Position = UDim2.new(1, -82, 0.5, -16)
+		editar.BackgroundColor3 = Color3.fromRGB(70, 90, 135)
 		editar.Text = "✏️"
 		editar.TextSize = 15
 		editar.Parent = item
 
 		arredondar(editar, 7)
+
 		local apagar = Instance.new("TextButton")
 		apagar.Size = UDim2.new(0, 32, 0, 32)
-		apagar.Position = UDim2.new(1, -40, 0.5, -16)
+		apagar.Position = UDim2.new(1, -44, 0.5, -16)
 		apagar.BackgroundColor3 = Color3.fromRGB(130, 55, 55)
 		apagar.Text = "🗑️"
 		apagar.TextSize = 15
 		apagar.Parent = item
 
 		arredondar(apagar, 7)
+
 		editar.MouseButton1Click:Connect(function()
+
+			enviando[config] = false
+
 			editandoIndice = indice
+
 			campoTecla.Text = config.nomeTecla
 			campoMensagem.Text = config.texto
 			campoIntervalo.Text = tostring(config.intervalo)
 			campoEmoji.Text = config.emoji or "💬"
+
 			tituloEditor.Text = "✏️ Editar mensagem"
 			editor.Visible = true
 		end)
 
 		apagar.MouseButton1Click:Connect(function()
+
 			enviando[config] = false
+
 			table.remove(mensagens, indice)
+
 			atualizarLista()
 			criarBotoesMobile()
 		end)
 	end
 end
 
+--==================================================
+-- ADICIONAR
+--==================================================
+
 botaoAdicionar.MouseButton1Click:Connect(function()
+
 	editandoIndice = nil
+
 	tituloEditor.Text = "➕ Nova mensagem"
+
 	campoTecla.Text = ""
 	campoMensagem.Text = ""
-	campoIntervalo.Text = "1"
+	campoIntervalo.Text = "0.1"
 	campoEmoji.Text = "💬"
+
 	editor.Visible = true
 end)
 
@@ -477,13 +659,20 @@ cancelar.MouseButton1Click:Connect(function()
 	editor.Visible = false
 end)
 
+--==================================================
+-- SALVAR MENSAGEM
+--==================================================
+
 salvarMensagem.MouseButton1Click:Connect(function()
 
-	local key = keyCodeDaLetra(campoTecla.Text)
+	local nomeTecla = string.upper(campoTecla.Text)
+	local key = keyCodeDaLetra(nomeTecla)
 
 	if not key then
+
 		campoTecla.Text = ""
-		campoTecla.PlaceholderText = "Tecla inválida!"
+		campoTecla.PlaceholderText = "❌ Tecla inválida!"
+
 		return
 	end
 
@@ -497,10 +686,26 @@ salvarMensagem.MouseButton1Click:Connect(function()
 		tempo = 0.1
 	end
 
+	local texto = campoMensagem.Text
+
+	-- DUPLICATA
+	for indice, config in ipairs(mensagens) do
+
+		if indice ~= editandoIndice
+			and config.tecla == key
+			and string.lower(config.texto) == string.lower(texto) then
+
+			campoMensagem.Text = ""
+			campoMensagem.PlaceholderText = "❌ Essa mensagem já existe!"
+
+			return
+		end
+	end
+
 	local dados = {
 		tecla = key,
-		nomeTecla = string.upper(campoTecla.Text),
-		texto = campoMensagem.Text,
+		nomeTecla = nomeTecla,
+		texto = texto,
 		intervalo = tempo,
 		emoji = campoEmoji.Text ~= "" and campoEmoji.Text or "💬"
 	}
@@ -513,7 +718,6 @@ salvarMensagem.MouseButton1Click:Connect(function()
 	else
 
 		table.insert(mensagens, dados)
-
 	end
 
 	editor.Visible = false
@@ -523,7 +727,7 @@ salvarMensagem.MouseButton1Click:Connect(function()
 end)
 
 --==================================================
--- CONFIG
+-- CONFIGURAÇÕES
 --==================================================
 
 local tituloConfig = Instance.new("TextLabel")
@@ -532,38 +736,40 @@ tituloConfig.BackgroundTransparency = 1
 tituloConfig.Text = "⚙️ Configurações"
 tituloConfig.TextColor3 = Color3.new(1, 1, 1)
 tituloConfig.TextSize = 20
+tituloConfig.Font = Enum.Font.GothamBold
 tituloConfig.Parent = paginaConfig
 
--- DISPOSITIVO
 local dispositivoLabel = Instance.new("TextLabel")
 dispositivoLabel.Size = UDim2.new(1, 0, 0, 30)
-dispositivoLabel.Position = UDim2.new(0, 0, 0, 40)
+dispositivoLabel.Position = UDim2.new(0, 0, 0, 42)
 dispositivoLabel.BackgroundTransparency = 1
 dispositivoLabel.Text = "Dispositivo"
 dispositivoLabel.TextColor3 = Color3.new(1, 1, 1)
 dispositivoLabel.TextSize = 17
+dispositivoLabel.Font = Enum.Font.GothamSemibold
 dispositivoLabel.TextXAlignment = Enum.TextXAlignment.Left
 dispositivoLabel.Parent = paginaConfig
 
--- SWITCH
 local switch = Instance.new("TextButton")
-switch.Size = UDim2.new(0, 180, 0, 42)
-switch.Position = UDim2.new(0, 0, 0, 75)
-switch.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
+switch.Size = UDim2.new(0, 190, 0, 42)
+switch.Position = UDim2.new(0, 0, 0, 78)
+switch.BackgroundColor3 = Color3.fromRGB(58, 58, 62)
 switch.Text = "🖥️ PC"
 switch.TextColor3 = Color3.new(1, 1, 1)
 switch.TextSize = 17
+switch.Font = Enum.Font.GothamBold
 switch.Parent = paginaConfig
 
 arredondar(switch, 8)
 
 local salvarConfig = Instance.new("TextButton")
 salvarConfig.Size = UDim2.new(1, 0, 0, 42)
-salvarConfig.Position = UDim2.new(0, 0, 0, 130)
-salvarConfig.BackgroundColor3 = Color3.fromRGB(70, 130, 80)
+salvarConfig.Position = UDim2.new(0, 0, 0, 132)
+salvarConfig.BackgroundColor3 = Color3.fromRGB(68, 125, 80)
 salvarConfig.Text = "💾 Salvar configuração"
 salvarConfig.TextColor3 = Color3.new(1, 1, 1)
-salvarConfig.TextSize = 17
+salvarConfig.TextSize = 16
+salvarConfig.Font = Enum.Font.GothamBold
 salvarConfig.Parent = paginaConfig
 
 arredondar(salvarConfig, 8)
@@ -580,6 +786,7 @@ status.Parent = paginaConfig
 switch.MouseButton1Click:Connect(function()
 
 	if modo == "PC" then
+
 		modo = "Mobile"
 
 		switch.Text = "📱 Mobile"
@@ -588,12 +795,15 @@ switch.MouseButton1Click:Connect(function()
 		mobileFrame.Visible = true
 
 	else
+
 		modo = "PC"
 
 		switch.Text = "🖥️ PC"
 		status.Text = "Modo atual: 🖥️ PC"
 
 		mobileFrame.Visible = false
+
+		pararTodos()
 	end
 end)
 
@@ -602,80 +812,304 @@ salvarConfig.MouseButton1Click:Connect(function()
 	status.Text = "✅ Configuração salva!"
 
 	task.delay(2, function()
+
 		if status then
+
 			status.Text = "Modo atual: " ..
 				(modo == "PC" and "🖥️ PC" or "📱 Mobile")
+
 		end
 	end)
 end)
 
 --==================================================
--- EXTRAS
+-- EXTRAS COM ROLAGEM
 --==================================================
 
+local extrasScroll = Instance.new("ScrollingFrame")
+extrasScroll.Size = UDim2.new(1, 0, 1, 0)
+extrasScroll.BackgroundTransparency = 1
+extrasScroll.BorderSizePixel = 0
+extrasScroll.ScrollBarThickness = 6
+extrasScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+extrasScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+extrasScroll.Parent = paginaExtras
+
+local extrasLayout = Instance.new("UIListLayout")
+extrasLayout.Padding = UDim.new(0, 10)
+extrasLayout.SortOrder = Enum.SortOrder.LayoutOrder
+extrasLayout.Parent = extrasScroll
+
 local tituloExtras = Instance.new("TextLabel")
-tituloExtras.Size = UDim2.new(1, 0, 0, 35)
+tituloExtras.Size = UDim2.new(1, -8, 0, 35)
 tituloExtras.BackgroundTransparency = 1
 tituloExtras.Text = "✨ Extras"
 tituloExtras.TextColor3 = Color3.new(1, 1, 1)
 tituloExtras.TextSize = 20
-tituloExtras.Parent = paginaExtras
+tituloExtras.Font = Enum.Font.GothamBold
+tituloExtras.TextXAlignment = Enum.TextXAlignment.Left
+tituloExtras.LayoutOrder = 1
+tituloExtras.Parent = extrasScroll
+
+--==================================================
+-- CONTADOR
+--==================================================
 
 local contadorLabel = Instance.new("TextLabel")
-contadorLabel.Size = UDim2.new(1, 0, 0, 45)
-contadorLabel.Position = UDim2.new(0, 0, 0, 45)
-contadorLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+contadorLabel.Size = UDim2.new(1, -8, 0, 45)
+contadorLabel.BackgroundColor3 = Color3.fromRGB(48, 48, 51)
 contadorLabel.Text = "📨 Mensagens enviadas: 0"
 contadorLabel.TextColor3 = Color3.new(1, 1, 1)
-contadorLabel.TextSize = 17
-contadorLabel.Parent = paginaExtras
+contadorLabel.TextSize = 16
+contadorLabel.LayoutOrder = 2
+contadorLabel.Parent = extrasScroll
 
 arredondar(contadorLabel, 8)
 
-local esconder = Instance.new("TextButton")
-esconder.Size = UDim2.new(1, 0, 0, 42)
-esconder.Position = UDim2.new(0, 0, 0, 100)
-esconder.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
-esconder.Text = "👁️ Esconder painel"
-esconder.TextColor3 = Color3.new(1, 1, 1)
-esconder.TextSize = 16
-esconder.Parent = paginaExtras
+--==================================================
+-- MODO EDITOR
+--==================================================
 
-arredondar(esconder, 8)
+local editorTitulo = Instance.new("TextLabel")
+editorTitulo.Size = UDim2.new(1, -8, 0, 35)
+editorTitulo.BackgroundTransparency = 1
+editorTitulo.Text = "🛠️ Modo Editor"
+editorTitulo.TextColor3 = Color3.new(1, 1, 1)
+editorTitulo.TextSize = 18
+editorTitulo.Font = Enum.Font.GothamBold
+editorTitulo.TextXAlignment = Enum.TextXAlignment.Left
+editorTitulo.LayoutOrder = 3
+editorTitulo.Parent = extrasScroll
 
-esconder.MouseButton1Click:Connect(function()
-	painel.Visible = false
+local editorBotao = Instance.new("TextButton")
+editorBotao.Size = UDim2.new(1, -8, 0, 48)
+editorBotao.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+editorBotao.Text = "🛠️ Ativar Modo Editor"
+editorBotao.TextColor3 = Color3.new(1, 1, 1)
+editorBotao.TextSize = 16
+editorBotao.Font = Enum.Font.GothamBold
+editorBotao.LayoutOrder = 4
+editorBotao.Parent = extrasScroll
+
+arredondar(editorBotao, 8)
+
+local editorInfo = Instance.new("TextLabel")
+editorInfo.Size = UDim2.new(1, -8, 0, 55)
+editorInfo.BackgroundTransparency = 1
+editorInfo.Text = "Arraste os botões enquanto o editor estiver ligado."
+editorInfo.TextColor3 = Color3.fromRGB(170, 170, 170)
+editorInfo.TextSize = 14
+editorInfo.TextWrapped = true
+editorInfo.LayoutOrder = 5
+editorInfo.Parent = extrasScroll
+
+editorBotao.MouseButton1Click:Connect(function()
+
+	modoEditor = not modoEditor
+
+	if modoEditor then
+
+		editorBotao.Text = "🛠️ Editor ATIVADO"
+		editorBotao.BackgroundColor3 = Color3.fromRGB(75, 115, 170)
+
+		pararTodos()
+
+	else
+
+		editorBotao.Text = "🛠️ Ativar Modo Editor"
+		editorBotao.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+
+	end
 end)
 
-botaoPrincipal.MouseButton1Click:Connect(function()
-	painel.Visible = not painel.Visible
-end)
+--==================================================
+-- PRESETS
+--==================================================
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed or modo ~= "PC" then
+local presetTitulo = Instance.new("TextLabel")
+presetTitulo.Size = UDim2.new(1, -8, 0, 35)
+presetTitulo.BackgroundTransparency = 1
+presetTitulo.Text = "💾 Presets"
+presetTitulo.TextColor3 = Color3.new(1, 1, 1)
+presetTitulo.TextSize = 18
+presetTitulo.Font = Enum.Font.GothamBold
+presetTitulo.TextXAlignment = Enum.TextXAlignment.Left
+presetTitulo.LayoutOrder = 6
+presetTitulo.Parent = extrasScroll
+
+local presetNome = Instance.new("TextBox")
+presetNome.Size = UDim2.new(1, -8, 0, 42)
+presetNome.BackgroundColor3 = Color3.fromRGB(55, 55, 59)
+presetNome.TextColor3 = Color3.new(1, 1, 1)
+presetNome.PlaceholderText = "Nome do preset"
+presetNome.Text = ""
+presetNome.TextSize = 15
+presetNome.ClearTextOnFocus = false
+presetNome.LayoutOrder = 7
+presetNome.Parent = extrasScroll
+
+arredondar(presetNome, 8)
+
+local salvarPreset = Instance.new("TextButton")
+salvarPreset.Size = UDim2.new(1, -8, 0, 42)
+salvarPreset.BackgroundColor3 = Color3.fromRGB(65, 130, 78)
+salvarPreset.Text = "💾 Salvar preset atual"
+salvarPreset.TextColor3 = Color3.new(1, 1, 1)
+salvarPreset.TextSize = 15
+salvarPreset.Font = Enum.Font.GothamBold
+salvarPreset.LayoutOrder = 8
+salvarPreset.Parent = extrasScroll
+
+arredondar(salvarPreset, 8)
+
+local carregarPreset = Instance.new("TextButton")
+carregarPreset.Size = UDim2.new(1, -8, 0, 42)
+carregarPreset.BackgroundColor3 = Color3.fromRGB(65, 90, 135)
+carregarPreset.Text = "📂 Carregar preset"
+carregarPreset.TextColor3 = Color3.new(1, 1, 1)
+carregarPreset.TextSize = 15
+carregarPreset.Font = Enum.Font.GothamBold
+carregarPreset.LayoutOrder = 9
+carregarPreset.Parent = extrasScroll
+
+arredondar(carregarPreset, 8)
+
+local presetStatus = Instance.new("TextLabel")
+presetStatus.Size = UDim2.new(1, -8, 0, 40)
+presetStatus.BackgroundTransparency = 1
+presetStatus.Text = "Nenhum preset selecionado."
+presetStatus.TextColor3 = Color3.fromRGB(170, 170, 170)
+presetStatus.TextSize = 13
+presetStatus.TextWrapped = true
+presetStatus.LayoutOrder = 10
+presetStatus.Parent = extrasScroll
+
+--==================================================
+-- SALVAR PRESET
+--==================================================
+
+salvarPreset.MouseButton1Click:Connect(function()
+
+	local nome = presetNome.Text
+
+	if nome == "" then
+		presetStatus.Text = "❌ Digite um nome para o preset."
 		return
 	end
+
+	local dados = {}
+
 	for _, config in ipairs(mensagens) do
 
-		if input.KeyCode == config.tecla and not enviando[config] then
+		table.insert(dados, {
+			nomeTecla = config.nomeTecla,
+			texto = config.texto,
+			intervalo = config.intervalo,
+			emoji = config.emoji
+		})
+
+	end
+
+	presets[nome] = dados
+
+	presetStatus.Text = "✅ Preset '" .. nome .. "' salvo!"
+
+end)
+
+--==================================================
+-- CARREGAR PRESET
+--==================================================
+
+carregarPreset.MouseButton1Click:Connect(function()
+
+	local nome = presetNome.Text
+
+	if nome == "" then
+		presetStatus.Text = "❌ Digite o nome do preset."
+		return
+	end
+
+	local dados = presets[nome]
+
+	if not dados then
+		presetStatus.Text = "❌ Preset não encontrado."
+		return
+	end
+
+	pararTodos()
+
+	table.clear(mensagens)
+
+	for _, config in ipairs(dados) do
+
+		local key = keyCodeDaLetra(config.nomeTecla)
+
+		if key then
+
+			table.insert(mensagens, {
+				tecla = key,
+				nomeTecla = config.nomeTecla,
+				texto = config.texto,
+				intervalo = config.intervalo,
+				emoji = config.emoji
+			})
+
+		end
+	end
+
+	atualizarLista()
+	criarBotoesMobile()
+
+	presetStatus.Text = "✅ Preset '" .. nome .. "' carregado!"
+
+end)
+
+--==================================================
+-- ABRIR / FECHAR PAINEL
+--==================================================
+
+botaoPrincipal.MouseButton1Click:Connect(function()
+
+	painel.Visible = not painel.Visible
+
+	if not painel.Visible then
+		editor.Visible = false
+	end
+end)
+
+--==================================================
+-- TECLAS PC
+--==================================================
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+
+	if gameProcessed then
+		return
+	end
+
+	if modo ~= "PC" then
+		return
+	end
+
+	if modoEditor then
+		return
+	end
+
+	for _, config in ipairs(mensagens) do
+
+		if input.KeyCode == config.tecla
+			and not enviando[config] then
 
 			enviando[config] = true
 
 			task.spawn(function()
 
-				while enviando[config] and modo == "PC" do
+				while enviando[config]
+					and modo == "PC"
+					and not modoEditor do
 
-					local canal = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-
-					if canal then
-
-						pcall(function()
-							canal:SendAsync(config.texto)
-						end)
-
+					if enviarMensagem(config.texto) then
 						contador += 1
-						contadorLabel.Text =
-							"📨 Mensagens enviadas: " .. contador
 					end
 
 					task.wait(config.intervalo)
@@ -686,6 +1120,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
+--==================================================
+-- SOLTAR TECLA
+--==================================================
+
 UserInputService.InputEnded:Connect(function(input)
 
 	for _, config in ipairs(mensagens) do
@@ -695,8 +1133,26 @@ UserInputService.InputEnded:Connect(function(input)
 		end
 
 	end
-
 end)
+
+--==================================================
+-- CONTADOR
+--==================================================
+
+task.spawn(function()
+
+	while gui.Parent do
+
+		contadorLabel.Text =
+			"📨 Mensagens enviadas: " .. contador
+
+		task.wait(0.2)
+	end
+end)
+
+--==================================================
+-- INICIALIZAÇÃO
+--==================================================
 
 atualizarLista()
 criarBotoesMobile()
